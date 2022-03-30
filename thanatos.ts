@@ -103,17 +103,17 @@ const autobuy = (upgrade: Element) => {
   const button = Array.from(upgrade.getElementsByTagName("button")).find(
     (el) => el.textContent === "Auto"
   );
-  if (button) {
-    if (upgrade.textContent !== null)
-      console.info(
-        `[%cThanatos%c] Autobuying %c${upgrade.textContent}%c `,
-        spellColor("Thanatos"),
-        "",
-        spellColor(upgrade.textContent),
-        ""
-      );
-    button.click();
-  }
+  const name = upgrade.querySelector("h4");
+  if (!button) return;
+
+  console.info(
+    `[%cThanatos%c] Autobuying %c${name}%c `,
+    spellColor("Thanatos"),
+    "",
+    spellColor(name?.textContent ?? "Unknown Spell"),
+    ""
+  );
+  button.click();
 };
 
 const closeSidebar = async () => {
@@ -133,16 +133,34 @@ const openSidebar = async (section: string) => {
   sectionButton.click();
 };
 
+/** Check if an upgrade has a limited number of it available */
+const isLimited = (upgrade: Element) =>
+  upgrade.querySelector("p:last-child")?.textContent?.includes("/");
+
 /** Open the shop, select all tabs and autobuy every upgrade */
 const autobuyAll = async () => {
   await openSidebar("Shop");
   const tabs = await waitForElement(() => document.querySelector(".tabs"));
-  for (let tab of tabs.children) {
+  for (const tab of tabs.children) {
     if (tab.textContent === "Complete" || !(tab instanceof HTMLElement))
       continue;
     tab.click();
-    for (const upgrade of document.getElementsByClassName("upgrade"))
-      autobuy(upgrade);
+    const upgrades = Array.from(document.getElementsByClassName("upgrade"));
+    const someLimited = upgrades.some(isLimited);
+    console.info(
+      `[%cThanatos%c / %c${tab.textContent}%c] Do we have any limited upgrades? ${someLimited}`,
+      spellColor("Thanatos"),
+      "",
+      spellColor(tab.textContent ?? "Unknown Tab"),
+      ""
+    );
+
+    for (const upgrade of upgrades) {
+      const limited = isLimited(upgrade);
+      /* If there are limited upgrades to buy, prioritize those */
+      const shouldBuy = !someLimited || limited;
+      if (shouldBuy) autobuy(upgrade);
+    }
   }
   closeSidebar();
 };
